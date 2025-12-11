@@ -31,8 +31,30 @@ void sendmsg (char *user, char *target, char *msg) {
 	// Send a request to the server to send the message (msg) to the target user (target)
 	// by creating the message structure and writing it to server's FIFO
 
+	int fd = open("serverFIFO", O_WRONLY);
+	
+	//debuging
+	
+	if (fd == -1) {
+	perror("failed to open serverFIFO");
+	}	
+	struct message req;
 
+	strncpy(req.source, user, sizeof(req.source) - 1);
+    	
+	req.source[sizeof(req.source) - 1] = '\0';
 
+    	strncpy(req.target, target, sizeof(req.target) - 1);
+    	
+	req.target[sizeof(req.target) - 1] = '\0';
+
+    	strncpy(req.msg, msg, sizeof(req.msg) - 1);
+    	
+	req.msg[sizeof(req.msg) - 1] = '\0';
+
+    	write(fd, &req, sizeof(struct message));
+    	
+	close(fd);
 
 
 
@@ -49,10 +71,20 @@ void* messageListener(void *arg) {
 	// Incoming message from [source]: [message]
 	// put an end of line at the end of the message
 
+	
+	struct message req;
+	
+	while (1) {
+	
+		int fd = open(uName, O_RDONLY);
+	
+		if (read(fd, &req, sizeof(req)) == sizeof(req)) {
+            		printf("Incoming message from %s: %s\n", req.source, req.msg);
+            		fflush(stdout);
+		}
 
-
-
-
+	close(fd);
+	}
 
 	pthread_exit((void*)0);
 }
@@ -68,44 +100,45 @@ int isAllowed(const char*cmd) {
 }
 
 int main(int argc, char **argv) {
-    pid_t pid;
-    char **cargv; 
-    char *path;
-    char line[256];
-    int status;
-    posix_spawnattr_t attr;
+    	pid_t pid;
+    	char **cargv; 
+    	char *path;
+    	char line[256];
+    	int status;
+    	posix_spawnattr_t attr;
 
-    if (argc!=2) {
-	printf("Usage: ./rsh <username>\n");
-	exit(1);
-    }
-    signal(SIGINT,terminate);
+    	if (argc!=2) {
+		printf("Usage: ./rsh <username>\n");
+		exit(1);
+	    }
+	signal(SIGINT,terminate);
 
-    strcpy(uName,argv[1]);
+    	strcpy(uName,argv[1]);
 
     // TODO:
     // create the message listener thread
+    
+	pthread_t tid;
+    	
+	pthread_create(&tid, NULL, messageListener, NULL);
+    
 
+	while (1) {
 
+		fprintf(stderr,"rsh>");
 
+		if (fgets(line,256,stdin)==NULL) continue;
 
+		if (strcmp(line,"\n")==0) continue;
 
-    while (1) {
+		line[strlen(line)-1]='\0';
 
-	fprintf(stderr,"rsh>");
+		char cmd[256];
+		char line2[256];
+		strcpy(line2,line);
+		strcpy(cmd,strtok(line," "));
 
-	if (fgets(line,256,stdin)==NULL) continue;
-
-	if (strcmp(line,"\n")==0) continue;
-
-	line[strlen(line)-1]='\0';
-
-	char cmd[256];
-	char line2[256];
-	strcpy(line2,line);
-	strcpy(cmd,strtok(line," "));
-
-	if (!isAllowed(cmd)) {
+		if (!isAllowed(cmd)) {
 		printf("NOT ALLOWED!\n");
 		continue;
 	}
@@ -124,14 +157,22 @@ int main(int argc, char **argv) {
 		// if no message is specified, you should print the followingA
  		// printf("sendmsg: you have to enter a message\n");
 
+		char *target = strtok(NULL, " ");
+        	
+		if (target == NULL) {
+            		printf("sendmsg: you have to specify target user\n");
+            		continue;
+        	}
 
+		char *msg = strtok(NULL, "");
+        	
+		if (msg == NULL) {
+            	
+			printf("sendmsg: you have to enter a message\n");
+            		continue;
+        	}
 
-
-
-
-
-
-
+		sendmsg(uName, target, msg);
 
 		continue;
 	}
