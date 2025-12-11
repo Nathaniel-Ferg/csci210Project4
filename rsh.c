@@ -36,7 +36,11 @@ void sendmsg (char *user, char *target, char *msg) {
 	//debuging
 	
 	if (fd == -1) {
+
 	perror("failed to open serverFIFO");
+	
+	return;
+	
 	}	
 	struct message req;
 
