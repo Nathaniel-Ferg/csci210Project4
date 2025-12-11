@@ -81,6 +81,11 @@ void* messageListener(void *arg) {
 		if (read(fd, &req, sizeof(req)) == sizeof(req)) {
             		printf("Incoming message from %s: %s\n", req.source, req.msg);
             		fflush(stdout);
+
+
+			fprintf(stderr,"rsh>");
+			fflush(stderr);
+
 		}
 
 	close(fd);
